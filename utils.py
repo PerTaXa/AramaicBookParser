@@ -1,5 +1,6 @@
 import re
 import numpy as np
+import copy
 
 yTolerance = 5
 
@@ -20,6 +21,13 @@ def pageSortCmp(first, second):
 def splitArrNParts(a, n):
     return [list(i) for i in np.array_split(a, n)]
 
+def flattenList(lst):
+    return [item for sublist in lst for item in sublist]
+
+def swapPositions(list, pos1, pos2):
+    list[pos1], list[pos2] = list[pos2], list[pos1]
+    return list
+
 def splitCharsBy(chars, splitter):
     res = []
     temp = []
@@ -32,10 +40,10 @@ def splitCharsBy(chars, splitter):
     return res
 
 def joinCharsBy(chars, joint):
-    copy = chars.copy()
-    for arr in copy:
+    cpy = copy.deepcopy(chars)
+    for arr in cpy:
         arr.append({'text': joint})
-    return [item for sublist in copy for item in sublist]
+    return flattenList(cpy)
 
 def splitTextByRegex(text, regex):
     found = re.findall(regex, text)
@@ -50,3 +58,27 @@ def splitTextByRegex(text, regex):
     result = [text[indices[ind - 1] : regInd] if ind else text[:regInd] for ind, regInd in enumerate(indices)]
     result.append(text[indices[-1]:])
     return result
+
+def filterBy(func, arr):
+    return list(filter(func, arr))
+
+def mergeNrows(arr, n):
+    if n == 1: return arr
+    temp = copy.deepcopy(arr)
+    for i in range(0, len(temp), n):
+        for j in range(1,n):
+            for k in range(len(arr[i])):
+                temp[i][k].extend(temp[i + j][k])
+    return temp[::n]
+
+def topDownReArrange(arr):
+    return [subArr.tolist() for subArr in np.rot90(arr, k=1, axes=(0, 1))]
+
+def flipDiagonally(arr):
+    return [subArr.tolist() for subArr in np.rot90(np.fliplr(arr))]
+
+def rearrangeByInterval(arr, n):
+    res = []
+    for i in range(n):
+        res.extend(arr[i::n])
+    return res

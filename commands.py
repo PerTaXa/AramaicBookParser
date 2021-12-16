@@ -27,19 +27,40 @@ def openNano(text):
         subprocess.call(['nano', tempFile])
         return CommandReturn.NANO
 
-def tableParse(text):
-    pass
+def swapIfNeeded(arr, elemLines):
+    if elemLines == 3:
+        for col in arr:
+            for elem in col:
+                swapPositions(elem, 0, 1)
+    return arr
+
+def tableParse(text, *args):
+    columns = int(args[0])
+    headerRows = int(args[1])
+    headerArr = []
+    for i in range(headerRows):
+        temp = []
+        num = int(args[2 + 2*i])
+        for j in range(num):
+            temp.append(args[2 + 2*i + j])
+        headerArr.append((num, temp))
+    print(headerArr)
 
 def gridParse(text, *args):
-    cols = int(args[0])
-    lines = text.split('\n')
+    columns = int(args[0])
+    direction = int(args[1])
+    elemLines = int(args[2])
+    lines = filterBy(lambda elem : len(elem), text.split('\n'))
     splited = [line.split(commonDelimiter) for line in lines]
-    evenSplited = [splitArrNParts(spl, cols) for spl in splited]
-    print(evenSplited)
-
+    evenSplited = [splitArrNParts(spl, columns) for spl in splited]
+    elemMatched = mergeNrows(evenSplited, elemLines)
+    directing = topDownReArrange(elemMatched)
+    directed = flipDiagonally(directing) if direction else directing
+    swapped = swapIfNeeded(directed, elemLines)
+    return swapped
 
 def simpleParse(text):
-    pass
+    return text
 
 def next(*_):
     return CommandReturn.NEXT
