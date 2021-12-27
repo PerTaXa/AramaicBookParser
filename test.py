@@ -1,16 +1,16 @@
-import numpy as np
+from enum import Enum
 
-def topDownReArrange(arr):
-    return [subArr.tolist() for subArr in np.rot90(arr, k=1, axes=(0, 1))]
+mp = {
+    'A' : 'ܐ',
+    '´' : 'ܬ',
+    'Â' : 'ܝ',
+    'i' : 'ܫ'
+}
 
-def flipDiagonally(arr):
-    return [subArr.tolist() for subArr in np.rot90(np.fliplr(arr))]
+a = 'ܫܬܝܐ'
+b = "AÂ´i"
 
-ar = [[1,2,3], 
-    [4,5,6],
-    [7,8,9]]
-print(topDownReArrange(ar))
-print(flipDiagonally(ar))
+print((''.join([mp[ch] for ch in b[::-1]]))[::-1])
 
 mp = {
     'mesto': {

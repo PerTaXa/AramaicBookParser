@@ -28,6 +28,9 @@ def swapPositions(list, pos1, pos2):
     list[pos1], list[pos2] = list[pos2], list[pos1]
     return list
 
+def delNewLineBegin(text):
+    return text[1:] if text[0] == '\n' else text
+
 def splitCharsBy(chars, splitter):
     res = []
     temp = []
@@ -37,6 +40,7 @@ def splitCharsBy(chars, splitter):
             temp = []
         else:
             temp.append(mp)
+    if temp : res.append(temp)
     return res
 
 def joinCharsBy(chars, joint):
@@ -47,6 +51,7 @@ def joinCharsBy(chars, joint):
 
 def splitTextByRegex(text, regex):
     found = re.findall(regex, text)
+    if not found : return [text]
     # Split text by found indices of splitting strs
     fromInd = -1
     indices = []
@@ -57,6 +62,7 @@ def splitTextByRegex(text, regex):
     # Append all tasks by their indices 
     result = [text[indices[ind - 1] : regInd] if ind else text[:regInd] for ind, regInd in enumerate(indices)]
     result.append(text[indices[-1]:])
+    result = filterBy(lambda elem : len(elem), result)
     return result
 
 def filterBy(func, arr):

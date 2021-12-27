@@ -1,23 +1,82 @@
 from dataclasses import dataclass
+import copy
 from typing import List
 
-class Parser:
+class General:
+    def className(self):
+        return type(self).__name__
 
-    @staticmethod
-    def parseTitle(text):
-        titles = text.split('\n')
-        return titles[0], titles[1]
-
-    @staticmethod
-    def parseBullet(text, bulletChar):
-        splited = text.split(bulletChar)
-        return [bulletChar + bullet for bullet in splited[1:]]
+    def copy(self):
+        return copy.deepcopy(self)
 
 @dataclass
-class Unit:
-    # title: tuple(str, str)
-    # bullets: List[str]
+class Request(General):
+    inUnitIndex : int
+    unit : str
+    type: str
+    data : dict
 
-    def __init__(self, text: str, bulletChar: str) -> None:
-        self.title = Parser.parseTitle(text)
-        self.bullets =  Parser.parseBullet(text, bulletChar)
+@dataclass
+class Text:
+    text: str
+
+@dataclass
+class Table(General):
+    headers : List[List]
+    grids : List[List]
+    hasSections : List[bool]
+
+    def clear(self):
+        self.headers = []
+        self.grids = []
+        self.hasSections = []
+
+@dataclass
+class Exercise(General):
+    title: str
+    table : Table
+
+    def clear(self):
+        self.title = ''
+        self.table.clear()
+
+    def isExercise(self):
+        return self.title != '' or len(self.table.headers) or len(self.table.grids)
+
+@dataclass
+class AramElement:
+    aram: str
+
+@dataclass
+class EngElement:
+    eng: str
+
+@dataclass
+class BothElement(AramElement):
+    eng: str
+
+@dataclass
+class TranslateElement(BothElement):
+    display: str
+    
+@dataclass
+class ImageElement(AramElement):
+    image: str
+
+@dataclass
+class CheckAram(EngElement):
+    options : List[str]
+
+@dataclass
+class MissingLetter(AramElement):
+    display: str
+
+# "simple": ["listen"],
+# 	"matching": [
+# 		"matchPictures",
+# 		"addVowelPoints",
+# 		"translate",
+# 		"checkFromTwo",
+# 		"addMissingLetter"
+# 	],
+# 	"composing": [],

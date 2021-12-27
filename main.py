@@ -3,6 +3,33 @@ import pdfplumber
 from functools import cmp_to_key
 from commands import *
 from utils import *
+import requests
+import dataclasses
+
+sepranUrmiDict = {
+        'ܐ' : ['a'],
+        'ܒ' : ['b'],
+        'ܓ' : [],
+        'ܕ' : [],
+        'ܗ' : [],
+        'ܘ' : [],
+        'ܙ' : [],
+        'ܚ' : [],
+        'ܛ' : [],
+        'ܝ' : [],
+        'ܟ' : [],
+        'ܠ' : [],
+        'ܡ' : [],
+        'ܢ' : [],
+        'ܣ' : [],
+        'ܥ' : [],
+        'ܦ' : [],
+        'ܨ' : [],
+        'ܩ' : [],
+        'ܪ' : [],
+        'ܫ' : [],
+        'ܬ' : []
+    }
 
 pageWidth = 595.275
 pageHeight = 841.890
@@ -10,6 +37,9 @@ pageCropTop = 170
 pageMiddle = 291.4
 pageLeftX = 92.771
 pageRightX = 490.538
+apiUrl = 'http://192.168.30.160:3030/unitContent'
+splitTextRegex = '\d\).|❑|<title>'
+unit = ''
 
 def extractData(page):
     page = page.crop((0, pageCropTop, pageWidth, pageHeight))
@@ -32,26 +62,86 @@ def processChars(chars):
 
     return newChars
 
+def convertToAramaic(line):
+    sepr = ''
+    for i in range(len(line)):
+        if line[i]['fontname'][7:] == 'Sepran':
+            line[i]['text'] = sepranUrmiDict[line[i]['text']]
+            sepr += line[i]['text']
+        else:
+            if i and line[i - 1]['fontname'][7:] == 'Sepran' and len(sepr):
+                line[i - len(sepr): i] = line[i - len(sepr): i][::-1]
+                sepr = ''
+    if len(sepr): 
+        line[-len(sepr):] = line[-len(sepr):][::-1]
+    return line
+
+def processLine(line):
+    leftX = float(line[0]['x0'])
+    rightX = float(line[-1]['x1'])
+    if abs((leftX + rightX) / 2 - pageMiddle) < 5 and leftX > pageLeftX + 10:
+        line.insert(0, {'text': '<title>', 'fontname': 'HCFQDX+Century'})
+    return convertToAramaic(line)
+
 def processData(chars):
     splited = splitCharsBy(chars, '\n')
-    for line in splited:
-        leftX = float(line[0]['x0'])
-        rightX = float(line[-1]['x1'])
-        if abs((leftX + rightX) / 2 - pageMiddle) < 1 and leftX > pageLeftX + 10:
-            line.insert(0, {'text': '<title>'})
-    joined = joinCharsBy(splited, '\n')
-    result = ''
-    for mp in joined:
-        result += mp['text']
-    return result
+    proccessedLines = [processLine(line) for line in splited]
+    
+    joined = joinCharsBy(proccessedLines, '\n')
+    return ''.join([mp['text'] for mp in joined])
 
 def splitIfTag(tasks, index):
     text = tasks[index]
-    splited = splitTextByRegex(text, '<table>|<simple>|<grid>')
+    splited = splitTextByRegex(text, '<header>|<simple>|<grid>|<title>')
     # Even if tag doesn't exist returns same txt
     tasks[index] = splited[0]
     for ind, txt in enumerate(splited[1:]):
         tasks.insert(index + ind + 1, txt)
+
+def sendDecision(data):
+    print('Send this data?')
+    print(data)
+    return int(input('Enter 0, 1, 2: '))
+
+def mergeTitles(textArr):
+    temp = copy.deepcopy(textArr)
+    for ind, task in enumerate(textArr[1:]):
+        if '<title>' in task and '<title>' in textArr[ind]:
+            temp[ind + 1] = textArr[ind] + task
+  
+    temp.append('')
+    result = []
+    for ind, task in enumerate(temp[:-1]):
+        if '<title>' in task and '<title>' in temp[ind + 1]:
+            continue
+        result.append(task)
+    return result
+
+def handleCommand(task, command, splited, tasks, index):
+    try:
+        task = re.sub('❑|<title>|<header>|<simple>|<grid>', '', task)
+        task = delNewLineBegin(task)
+        returned, data = commands[command](task, *(splited[1:]))
+        if returned == CommandReturn.nano:
+            with open('temp.txt', 'r') as f:
+                tasks[index] = f.read()
+                splitIfTag(tasks, index)
+        elif returned not in [CommandReturn.help, CommandReturn.header, CommandReturn.grid, 
+                                CommandReturn.exerciseTitle, CommandReturn.empty]:
+            query = Request(inUnitIndex=index, unit=unit, type=returned.name, data={})
+            # if returned not in [CommandReturn.TITLE, CommandReturn.BULLET, CommandReturn.TABLE]:
+            decision =  sendDecision(data)
+            if not decision : return
+            elif decision == 2 : data = {}
+            if not isinstance(data, dict) : data = dataclasses.asdict(data)
+            query.data = data
+            print(requests.post(apiUrl, json=dataclasses.asdict(query)).text)
+            
+        if returned in [CommandReturn.empty, CommandReturn.grid, CommandReturn.header, 
+                        CommandReturn.exerciseTitle, CommandReturn.bullet, CommandReturn.title] : index += 1
+        return index
+    except Exception as err:
+        print(err)
 
 def interaction(tasks):
     index = 0
@@ -62,28 +152,23 @@ def interaction(tasks):
         comm = input('Enter a command ("help" for help): ')
         splited = comm.split(' ')
         command = splited[0]
-        try:
-            returned = commands[command](task, *(splited[1:]))
-            if returned == CommandReturn.NANO:
-                with open('temp.txt', 'r') as f:
-                    tasks[index] = f.read()
-                    splitIfTag(tasks, index)
-            elif returned == CommandReturn.NEXT:
-                index += 1
-        except Exception as err:
-            print(err)
-            print('Wrong command!')
+        index = handleCommand(task, command, splited, tasks, index)
+        
 
 def main():
-    with pdfplumber.open(sys.argv[1]) as pdf:
+    global unit
+    unitFile = sys.argv[1]
+    unit = unitFile[:-4]
+    with pdfplumber.open(unitFile) as pdf:
         processed = ''
-        for page in pdf.pages:
+        for page in pdf.pages[:2]:
             _, chars = extractData(page)
             newChars = processChars(chars)
             processed += processData(newChars)
-        splited = splitTextByRegex(processed, '\d\).|❑|<title>')
-        splited = splited[13:]
-        interaction(splited)  
+        print(processed)
+        splited = splitTextByRegex(processed, splitTextRegex)
+        merged = mergeTitles(splited)
+        interaction(merged)  
    
 if __name__ == '__main__':
     main()
