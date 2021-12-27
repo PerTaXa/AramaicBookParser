@@ -1,36 +1,15 @@
 import sys
 import pdfplumber
+import json
 from functools import cmp_to_key
 from commands import *
 from utils import *
 import requests
 import dataclasses
 
-sepranUrmiDict = {
-        'ܐ' : ['a'],
-        'ܒ' : ['b'],
-        'ܓ' : [],
-        'ܕ' : [],
-        'ܗ' : [],
-        'ܘ' : [],
-        'ܙ' : [],
-        'ܚ' : [],
-        'ܛ' : [],
-        'ܝ' : [],
-        'ܟ' : [],
-        'ܠ' : [],
-        'ܡ' : [],
-        'ܢ' : [],
-        'ܣ' : [],
-        'ܥ' : [],
-        'ܦ' : [],
-        'ܨ' : [],
-        'ܩ' : [],
-        'ܪ' : [],
-        'ܫ' : [],
-        'ܬ' : []
-    }
-
+sepranUrmiDict = {}
+simonSpecialChar = 'ܔ'
+simonSpecial = {'text' : simonSpecialChar, 'fontname': 'HCFQDX+Sepran'}
 pageWidth = 595.275
 pageHeight = 841.890
 pageCropTop = 170
@@ -40,6 +19,11 @@ pageRightX = 490.538
 apiUrl = 'http://192.168.30.160:3030/unitContent'
 splitTextRegex = '\d\).|❑|<title>'
 unit = ''
+
+def readJson(file):
+    global sepranUrmiDict
+    with open(file) as json_file:
+        sepranUrmiDict = json.load(json_file)
 
 def extractData(page):
     page = page.crop((0, pageCropTop, pageWidth, pageHeight))
@@ -55,7 +39,7 @@ def processChars(chars):
     for ind, ch in enumerate(chars):
         if ind and sameY(ch, chars[ind - 1]) and abs(ch['x0'] - chars[ind - 1]['x0']) > 15 and ch['text'] != ' ':
             newChars.append({'text': commonDelimiter, 
-            'fontname' : chars[ind - 1]['fontname']})
+            'fontname' : 'HCFQDX+Century'})
         elif ind and not sameY(ch, chars[ind - 1]):
             newChars.append({'text':'\n'})
         newChars.append(ch)
@@ -63,17 +47,27 @@ def processChars(chars):
     return newChars
 
 def convertToAramaic(line):
-    sepr = ''
+    seprInd = -1
+    inserts = []
     for i in range(len(line)):
         if line[i]['fontname'][7:] == 'Sepran':
-            line[i]['text'] = sepranUrmiDict[line[i]['text']]
-            sepr += line[i]['text']
+            line[i]['text'] = sepranUrmiDict[line[i]['text']] if line[i]['text'] in sepranUrmiDict else 'ყ'
+            seprInd = i if seprInd == -1 else seprInd
         else:
-            if i and line[i - 1]['fontname'][7:] == 'Sepran' and len(sepr):
-                line[i - len(sepr): i] = line[i - len(sepr): i][::-1]
-                sepr = ''
-    if len(sepr): 
-        line[-len(sepr):] = line[-len(sepr):][::-1]
+            if i and line[i - 1]['fontname'][7:] == 'Sepran':
+                if isAramLetter(''.join([ch['text'] for ch in line[seprInd: i]])):
+                    inserts.append(i)
+                    
+                line[seprInd: i] = line[seprInd: i][::-1]
+                seprInd = -1
+    if seprInd != -1: 
+        if isAramLetter(''.join([ch['text'] for ch in line[seprInd:]])):
+            line.insert(seprInd, simonSpecial)
+        line[seprInd:] = line[seprInd:][::-1]
+    
+    for i in range(len(inserts)):
+        line.insert(inserts[i]+i, simonSpecial)
+
     return line
 
 def processLine(line):
@@ -130,7 +124,7 @@ def handleCommand(task, command, splited, tasks, index):
                                 CommandReturn.exerciseTitle, CommandReturn.empty]:
             query = Request(inUnitIndex=index, unit=unit, type=returned.name, data={})
             # if returned not in [CommandReturn.TITLE, CommandReturn.BULLET, CommandReturn.TABLE]:
-            decision =  sendDecision(data)
+            decision = sendDecision(data)
             if not decision : return
             elif decision == 2 : data = {}
             if not isinstance(data, dict) : data = dataclasses.asdict(data)
@@ -159,6 +153,7 @@ def main():
     global unit
     unitFile = sys.argv[1]
     unit = unitFile[:-4]
+    readJson('sepran-urmi.json')
     with pdfplumber.open(unitFile) as pdf:
         processed = ''
         for page in pdf.pages[:2]:

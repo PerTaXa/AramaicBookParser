@@ -7,10 +7,9 @@ mp = {
     'i' : 'ܫ'
 }
 
-a = 'ܫܬܝܐ'
-b = "AÂ´i"
-
-print((''.join([mp[ch] for ch in b[::-1]]))[::-1])
+a = 'ܬܹ̈'
+trs = [i.isalpha() for i in a]
+print(trs.count(True))
 
 mp = {
     'mesto': {

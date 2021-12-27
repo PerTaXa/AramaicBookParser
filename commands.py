@@ -97,19 +97,21 @@ def parseRows(text, columns, direction, elemLines):
 
 def elemToObj(arr, type):
     obj = 0
-    if type == 0:
+    if type == 1:
         obj = AramElement(arr[0])
-    elif type == 1:
-        obj = EngElement(arr[0])
     elif type == 2:
-        obj = BothElement(arr[0], arr[1])
+        obj = EngElement(arr[0])
     elif type == 3:
-        obj = TranslateElement(arr[0], arr[1], arr[2])
+        obj = BothElement(eng=arr[0], aram=arr[1])
     elif type == 4:
-        obj = ImageElement(arr[0], '')
+        obj = BothElement(aram=arr[0], eng=arr[1])
     elif type == 5:
-        obj = CheckAram(arr[1], [arr[0], arr[1]])
+        obj = TranslateElement(arr[0], arr[1], arr[2])
     elif type == 6:
+        obj = ImageElement(arr[0], '')
+    elif type == 7:
+        obj = CheckAram(arr[1], [arr[0], arr[1]])
+    elif type == 8:
         obj = MissingLetter('rightHere', arr[0])
     return obj
     

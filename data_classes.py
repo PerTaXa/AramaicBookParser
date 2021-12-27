@@ -52,8 +52,8 @@ class EngElement:
     eng: str
 
 @dataclass
-class BothElement(AramElement):
-    eng: str
+class BothElement(AramElement, EngElement):
+    pass
 
 @dataclass
 class TranslateElement(BothElement):

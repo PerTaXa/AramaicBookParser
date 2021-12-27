@@ -4,6 +4,9 @@ import copy
 
 yTolerance = 5
 
+def isAramLetter(string):
+    return [ch.isalpha() for ch in string].count(True)
+
 def charY(char):
     return (char['bottom'] + char['top']) / 2
 
