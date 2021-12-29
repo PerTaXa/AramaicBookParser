@@ -51,7 +51,7 @@ def convertToAramaic(line):
     inserts = []
     for i in range(len(line)):
         if line[i]['fontname'][7:] == 'Sepran':
-            line[i]['text'] = sepranUrmiDict[line[i]['text']] if line[i]['text'] in sepranUrmiDict else 'ყ'
+            line[i]['text'] = sepranUrmiDict[line[i]['text']] if line[i]['text'] in sepranUrmiDict else 'ყ' + line[i]['text'] + 'ყ'
             seprInd = i if seprInd == -1 else seprInd
         else:
             if i and line[i - 1]['fontname'][7:] == 'Sepran':
