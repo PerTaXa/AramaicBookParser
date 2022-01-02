@@ -51,15 +51,21 @@ def convertToAramaic(line):
     inserts = []
     for i in range(len(line)):
         if line[i]['fontname'][7:] == 'Sepran':
+            # if not line[i]['text'] in sepranUrmiDict: print(line[i]['text'])
             line[i]['text'] = sepranUrmiDict[line[i]['text']] if line[i]['text'] in sepranUrmiDict else 'ყ' + line[i]['text'] + 'ყ'
             seprInd = i if seprInd == -1 else seprInd
-        else:
-            if i and line[i - 1]['fontname'][7:] == 'Sepran':
-                if isAramLetter(''.join([ch['text'] for ch in line[seprInd: i]])):
-                    inserts.append(i)
-                    
-                line[seprInd: i] = line[seprInd: i][::-1]
-                seprInd = -1
+        elif i and line[i - 1]['fontname'][7:] == 'Sepran':
+            # if line[i]['text'] == '-': 
+                # line[i]['fontname'] = 'HCFQDX+Sepran'
+                # continue
+                # line[i]['text'] = '⠀-⠀'
+                # line[i]['text'] = '‎-'
+
+            if isAramLetter(''.join([ch['text'] for ch in line[seprInd: i]])):
+                inserts.append(i)
+                
+            line[seprInd: i] = line[seprInd: i][::-1]
+            seprInd = -1
     if seprInd != -1: 
         if isAramLetter(''.join([ch['text'] for ch in line[seprInd:]])):
             line.insert(seprInd, simonSpecial)
@@ -75,6 +81,7 @@ def processLine(line):
     rightX = float(line[-1]['x1'])
     if abs((leftX + rightX) / 2 - pageMiddle) < 5 and leftX > pageLeftX + 10:
         line.insert(0, {'text': '<title>', 'fontname': 'HCFQDX+Century'})
+    # line = changeFont(line, ' ', 'HCFQDX+Sepran')
     return convertToAramaic(line)
 
 def processData(chars):
@@ -156,7 +163,7 @@ def main():
     readJson('sepran-urmi.json')
     with pdfplumber.open(unitFile) as pdf:
         processed = ''
-        for page in pdf.pages[:2]:
+        for page in pdf.pages[:3]:
             _, chars = extractData(page)
             newChars = processChars(chars)
             processed += processData(newChars)
