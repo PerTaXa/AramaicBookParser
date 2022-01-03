@@ -52,12 +52,8 @@ class EngElement:
     eng: str
 
 @dataclass
-class BothElement(AramElement, EngElement):
-    pass
-
-@dataclass
-class TranslateElement(BothElement):
-    display: str
+class BothElements:
+    words: List[str]
     
 @dataclass
 class ImageElement(AramElement):
@@ -66,17 +62,3 @@ class ImageElement(AramElement):
 @dataclass
 class CheckAram(EngElement):
     options : List[str]
-
-@dataclass
-class MissingLetter(AramElement):
-    display: str
-
-# "simple": ["listen"],
-# 	"matching": [
-# 		"matchPictures",
-# 		"addVowelPoints",
-# 		"translate",
-# 		"checkFromTwo",
-# 		"addMissingLetter"
-# 	],
-# 	"composing": [],

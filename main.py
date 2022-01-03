@@ -55,16 +55,16 @@ def convertToAramaic(line):
             line[i]['text'] = sepranUrmiDict[line[i]['text']] if line[i]['text'] in sepranUrmiDict else 'ყ' + line[i]['text'] + 'ყ'
             seprInd = i if seprInd == -1 else seprInd
         elif i and line[i - 1]['fontname'][7:] == 'Sepran':
-            # if line[i]['text'] == '-': 
-                # line[i]['fontname'] = 'HCFQDX+Sepran'
-                # continue
+            if line[i]['text'] == '-':
                 # line[i]['text'] = '⠀-⠀'
-                # line[i]['text'] = '‎-'
+                line[i]['text'] = '‎-'
+            index = i
+            if line[i - 1]['text'] == ' ': index -= 1
 
-            if isAramLetter(''.join([ch['text'] for ch in line[seprInd: i]])):
-                inserts.append(i)
+            if isAramLetter(''.join([ch['text'] for ch in line[seprInd: index]])):
+                inserts.append(index)
                 
-            line[seprInd: i] = line[seprInd: i][::-1]
+            line[seprInd: index] = line[seprInd: index][::-1]
             seprInd = -1
     if seprInd != -1: 
         if isAramLetter(''.join([ch['text'] for ch in line[seprInd:]])):
@@ -163,13 +163,14 @@ def main():
     readJson('sepran-urmi.json')
     with pdfplumber.open(unitFile) as pdf:
         processed = ''
-        for page in pdf.pages[:3]:
+        for page in pdf.pages:
             _, chars = extractData(page)
             newChars = processChars(chars)
             processed += processData(newChars)
-        print(processed)
+        # print(processed)
         splited = splitTextByRegex(processed, splitTextRegex)
         merged = mergeTitles(splited)
+        merged.append('The End 🔥')
         interaction(merged)  
    
 if __name__ == '__main__':
