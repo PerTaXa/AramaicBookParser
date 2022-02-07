@@ -5,7 +5,7 @@ import copy
 yTolerance = 5
 
 def isAramLetter(string):
-    return [ch.isalpha() for ch in string].count(True)
+    return [ch.isalpha() for ch in string].count(True) == 1
 
 def charY(char):
     return (char['bottom'] + char['top']) / 2
@@ -51,6 +51,12 @@ def joinCharsBy(chars, joint):
     for arr in cpy:
         arr.append({'text': joint})
     return flattenList(cpy)
+
+def changeFont(text, chars, fontname):
+    for char in text:
+        if char['text'] in chars:
+            char['fontname'] = fontname
+    return text
 
 def splitTextByRegex(text, regex):
     found = re.findall(regex, text)

@@ -3,7 +3,7 @@ from enum import Enum
 from data_classes import *
 from utils import *
 
-commonDelimiter = 'ჭ'
+commonDelimiter = '😎'
 exercise = Exercise('', Table([],[],[]))
 table = Table([],[],[])
 # tableHeaders = {
@@ -38,9 +38,10 @@ table = Table([],[],[])
 #                 ex   ex
          
 class CommandReturn(Enum):
-    listen_standart = 1
-    mixed_images = 2
-    all_images = 3
+    listen_simple = 0
+    newVocab_standard = 1
+    newVocab_mixedImages = 2
+    newVocab_allImages = 3
 
     matchPictures = 4
     addVowelPoints = 5
@@ -75,7 +76,7 @@ def openNano(text):
     with open(tempFile, 'w+') as file:
         file.write(text)
         file.close()
-        subprocess.call(['nano', tempFile])
+        subprocess.call(['vim', tempFile])
         return CommandReturn.nano, {}
 
 def swapIfNeeded(arr, elemLines):
@@ -102,17 +103,11 @@ def elemToObj(arr, type):
     elif type == 2:
         obj = EngElement(arr[0])
     elif type == 3:
-        obj = BothElement(eng=arr[0], aram=arr[1])
+        obj = BothElements(words=arr)
     elif type == 4:
-        obj = BothElement(aram=arr[0], eng=arr[1])
-    elif type == 5:
-        obj = TranslateElement(arr[0], arr[1], arr[2])
-    elif type == 6:
         obj = ImageElement(arr[0], '')
-    elif type == 7:
+    elif type == 5:
         obj = CheckAram(arr[1], [arr[0], arr[1]])
-    elif type == 8:
-        obj = MissingLetter('rightHere', arr[0])
     return obj
     
 def convertToDataclasses(grid, type):
@@ -234,8 +229,6 @@ def saveExercise(*args):
 def saveTable(*_):
     data = table.copy()
     table.clear()
-    print(exercise)
-    print(table)
     return CommandReturn.table, data
 
 def next(*_):
@@ -243,7 +236,7 @@ def next(*_):
 
 commands = {
     'help' : printHelp,
-    'nano' : openNano,
+    'vim' : openNano,
     'next' : next,
     'header' : headerParse,
     'grid' : gridParse,
