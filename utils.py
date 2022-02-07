@@ -17,7 +17,7 @@ def pageSortCmp(first, second):
         firstY = charY(first)
         secondY = charY(second)
         if sameY(first, second):
-            return first['x0'] - second['x0']
+            return first['x0'] - second['x0'] if abs(first['x0'] - second['x0']) > 1 else 0
         else:
             return firstY - secondY
 
@@ -52,10 +52,11 @@ def joinCharsBy(chars, joint):
         arr.append({'text': joint})
     return flattenList(cpy)
 
-def changeFont(text, chars, fontname):
+def changeFont(text, charStart, charDest, fontname):
     for char in text:
-        if char['text'] in chars:
+        if char['text'] == charStart and char['fontname'] != fontname:
             char['fontname'] = fontname
+            char['text'] = charDest
     return text
 
 def splitTextByRegex(text, regex):

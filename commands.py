@@ -1,9 +1,10 @@
+from posixpath import split
 import subprocess
 from enum import Enum
 from data_classes import *
 from utils import *
 
-commonDelimiter = '😎'
+commonDelimiter = 'ჭ'
 exercise = Exercise('', Table([],[],[]))
 table = Table([],[],[])
 # tableHeaders = {
@@ -86,10 +87,26 @@ def swapIfNeeded(arr, elemLines):
                 swapPositions(elem, 0, 1)
     return arr
 
+def removeU200E(evenSplited):
+    for col in range(len(evenSplited)):
+        for row in range(len(evenSplited[col])):
+            for elemInd in range(len(evenSplited[col][row])):
+                elem = evenSplited[col][row][elemInd]
+                splited = elem.split('‎')
+                if len(splited) > 1:
+                    splited = splited[::-1]
+                    splited[-1] = splited[0][0] + splited[-1]
+                    splited[0] = splited[0][1:]
+                
+                evenSplited[col][row][elemInd] = ''.join(splited)
+    return evenSplited
+
+
 def parseRows(text, columns, direction, elemLines):
     lines = filterBy(lambda elem : len(elem), text.split('\n'))
     splited = [line.split(commonDelimiter) for line in lines]
     evenSplited = [splitArrNParts(spl, columns) for spl in splited]
+    evenSplited = removeU200E(evenSplited)
     elemMatched = mergeNrows(evenSplited, elemLines)
     directing = topDownReArrange(elemMatched)
     directed = flipDiagonally(directing) if direction else directing
@@ -203,7 +220,9 @@ def headerParse(text, *args):
     return CommandReturn.header, {}
 
 def beatifyText(text):
-    text = re.sub('\n', '', text)
+    text = re.sub(' \n', ' ', text)
+    text = re.sub('\n ', ' ', text)
+    text = re.sub('\n', ' ', text)
     text = re.sub(commonDelimiter, '', text)
     return text
 

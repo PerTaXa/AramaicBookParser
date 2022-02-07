@@ -1,23 +1,7 @@
 from enum import Enum
 
-mp = {
-    'A' : 'ܐ',
-    '´' : 'ܬ',
-    'Â' : 'ܝ',
-    'i' : 'ܫ'
-}
+ab = ':A⁄oøx h4r3m7a'
 
-a = 'ܬܹ̈'
-trs = [i.isalpha() for i in a]
-print(trs.count(True))
-
-mp = {
-    'mesto': {
-        'mnoj' : [],
-        'edit' : {
-            'jensk' : [],
-            'mujsk' : []
-        }
-    }
-    
-}
+for a in ab:
+    print(ord(a))
+    # print(ord(u"{a}"))

@@ -1,4 +1,5 @@
 import sys
+from numpy import empty
 import pdfplumber
 import json
 from functools import cmp_to_key
@@ -16,7 +17,7 @@ pageCropTop = 170
 pageMiddle = 291.4
 pageLeftX = 92.771
 pageRightX = 490.538
-apiUrl = 'http://192.168.30.160:3030/unitContent'
+apiUrl = 'http://192.168.131.160:3030/unit-content'
 splitTextRegex = '\d\).|❑|<title>'
 unit = ''
 
@@ -37,13 +38,14 @@ def processChars(chars):
 
     newChars = []
     for ind, ch in enumerate(chars):
-        if ind and sameY(ch, chars[ind - 1]) and abs(ch['x0'] - chars[ind - 1]['x0']) > 15 and ch['text'] != ' ':
+        if ind and sameY(ch, chars[ind - 1]) and abs(ch['x0'] - chars[ind - 1]['x0']) > 20 and ch['text'] != ' ':
             newChars.append({'text': commonDelimiter, 
             'fontname' : 'HCFQDX+Century'})
         elif ind and not sameY(ch, chars[ind - 1]):
             newChars.append({'text':'\n'})
         newChars.append(ch)
 
+    # print(''.join([char['text'] for char in newChars]))
     return newChars
 
 def convertToAramaic(line):
@@ -52,20 +54,23 @@ def convertToAramaic(line):
     for i in range(len(line)):
         if line[i]['fontname'][7:] == 'Sepran':
             # if not line[i]['text'] in sepranUrmiDict: print(line[i]['text'])
-            line[i]['text'] = sepranUrmiDict[line[i]['text']] if line[i]['text'] in sepranUrmiDict else 'ყ' + line[i]['text'] + 'ყ'
+            if not(i and line[i - 1]['fontname'][7:] != 'Sepran' and line[i]['text'] in '()'):
+                line[i]['text'] = sepranUrmiDict[line[i]['text']] if line[i]['text'] in sepranUrmiDict else 'ყ' + line[i]['text'] + 'ყ'
             seprInd = i if seprInd == -1 else seprInd
-        elif i and line[i - 1]['fontname'][7:] == 'Sepran':
-            if line[i]['text'] == '-':
+        else:
+            if line[i]['text'] in '-+': #-+.
                 # line[i]['text'] = '⠀-⠀'
-                line[i]['text'] = '‎-'
-            index = i
-            if line[i - 1]['text'] == ' ': index -= 1
-
-            if isAramLetter(''.join([ch['text'] for ch in line[seprInd: index]])):
-                inserts.append(index)
+                line[i]['text'] = '‎' + line[i]['text']
                 
-            line[seprInd: index] = line[seprInd: index][::-1]
-            seprInd = -1
+            if i and line[i - 1]['fontname'][7:] == 'Sepran':
+                index = i
+                if line[i - 1]['text'] == ' ': index -= 1
+
+                if isAramLetter(''.join([ch['text'] for ch in line[seprInd: index]])):
+                    inserts.append(index)
+                    
+                line[seprInd: index] = line[seprInd: index][::-1]
+                seprInd = -1
     if seprInd != -1: 
         if isAramLetter(''.join([ch['text'] for ch in line[seprInd:]])):
             line.insert(seprInd, simonSpecial)
@@ -79,10 +84,15 @@ def convertToAramaic(line):
 def processLine(line):
     leftX = float(line[0]['x0'])
     rightX = float(line[-1]['x1'])
-    if abs((leftX + rightX) / 2 - pageMiddle) < 5 and leftX > pageLeftX + 10:
+    if abs((leftX + rightX) / 2 - pageMiddle) < 5 and leftX > pageLeftX + 12:
         line.insert(0, {'text': '<title>', 'fontname': 'HCFQDX+Century'})
-    # line = changeFont(line, ' ', 'HCFQDX+Sepran')
-    return convertToAramaic(line)
+
+    line = changeFont(line, '?', '^', 'HCFQDX+Sepran')
+    line = changeFont(line, ',', '#', 'HCFQDX+Sepran')
+    # line = changeFont(line, '.', '@', 'HCFQDX+Sepran')
+    aramaic = convertToAramaic(line)
+
+    return aramaic
 
 def processData(chars):
     splited = splitCharsBy(chars, '\n')
@@ -132,17 +142,22 @@ def handleCommand(task, command, splited, tasks, index):
             query = Request(inUnitIndex=index, unit=unit, type=returned.name, data={})
             # if returned not in [CommandReturn.TITLE, CommandReturn.BULLET, CommandReturn.TABLE]:
             decision = sendDecision(data)
-            if not decision : return
+            if not decision : return index
             elif decision == 2 : data = {}
             if not isinstance(data, dict) : data = dataclasses.asdict(data)
             query.data = data
             print(requests.post(apiUrl, json=dataclasses.asdict(query)).text)
-            
+        elif returned not in [CommandReturn.empty]:
+            decision = sendDecision(data)
+            if not decision : return index
+            elif decision == 1 : return index + 1
+        
         if returned in [CommandReturn.empty, CommandReturn.grid, CommandReturn.header, 
                         CommandReturn.exerciseTitle, CommandReturn.bullet, CommandReturn.title] : index += 1
-        return index
-    except Exception as err:
-        print(err)
+    except Exception as _:
+        print('---  Wrong command!!!  ---')
+    
+    return index
 
 def interaction(tasks):
     index = 0
