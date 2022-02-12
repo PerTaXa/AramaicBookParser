@@ -1,5 +1,4 @@
 import sys
-from numpy import empty
 import pdfplumber
 import json
 from functools import cmp_to_key
@@ -7,6 +6,11 @@ from commands import *
 from utils import *
 import requests
 import dataclasses
+from tkinter import *
+from tkinter import messagebox
+from tkinter.scrolledtext import ScrolledText
+from threading import Semaphore, Thread
+import os
 
 sepranUrmiDict = {}
 simonSpecialChar = 'ܔ'
@@ -21,9 +25,33 @@ apiUrl = 'http://192.168.131.160:3030/unit-content'
 splitTextRegex = '\d\).|❑|<title>'
 unit = ''
 
+mutex = Semaphore(0)
+comm = ''
+
+root = Tk()
+root.configure(bg='blue')
+def on_closing():
+    root.destroy()
+    os._exit(0)
+root.protocol("WM_DELETE_WINDOW", on_closing)
+
+def popupwin():
+    top = Toplevel()
+    # top.attributes('-topmost', 'true')
+    top.geometry("200x150")
+
+    entry= Entry(top)
+    entry.pack()
+    Button(top,text= "Load state").pack(pady= 5,side=TOP)
+    Button(top, text="Load Previous state", command=lambda:top.destroy()).pack(pady=5, side= TOP)
+    Button(top, text="Load default").pack(pady=5, side= TOP)
+
+scrolledTxt = ScrolledText(root, font = ("Times New Roman",15))
+scrolledTxt.grid(row=0, column=1, rowspan=3, columnspan=7)
+
 def readJson(file):
     global sepranUrmiDict
-    with open(file) as json_file:
+    with open(file, encoding='utf-8') as json_file:
         sepranUrmiDict = json.load(json_file)
 
 def extractData(page):
@@ -112,7 +140,11 @@ def splitIfTag(tasks, index):
 def sendDecision(data):
     print('Send this data?')
     print(data)
-    return int(input('Enter 0, 1, 2: '))
+    if messagebox.askyesno('Send this data?', data):
+        return 1
+    else:
+        return 0
+    # return int(input('Enter 0, 1, 2: '))
 
 def mergeTitles(textArr):
     temp = copy.deepcopy(textArr)
@@ -134,9 +166,9 @@ def handleCommand(task, command, splited, tasks, index):
         task = delNewLineBegin(task)
         returned, data = commands[command](task, *(splited[1:]))
         if returned == CommandReturn.nano:
-            with open('temp.txt', 'r') as f:
-                tasks[index] = f.read()
-                splitIfTag(tasks, index)
+            tasks[index] = scrolledTxt.get(1.0, END)
+            splitIfTag(tasks, index)
+               
         elif returned not in [CommandReturn.help, CommandReturn.header, CommandReturn.grid, 
                                 CommandReturn.exerciseTitle, CommandReturn.empty]:
             query = Request(inUnitIndex=index, unit=unit, type=returned.name, data={})
@@ -155,27 +187,59 @@ def handleCommand(task, command, splited, tasks, index):
         if returned in [CommandReturn.empty, CommandReturn.grid, CommandReturn.header, 
                         CommandReturn.exerciseTitle, CommandReturn.bullet, CommandReturn.title] : index += 1
     except Exception as _:
+        messagebox.showerror("Error", "Wrong Command")
         print('---  Wrong command!!!  ---')
     
     return index
 
 def interaction(tasks):
+    global scrolledTxt
     index = 0
     while index < len(tasks):
         task = tasks[index]
         print('\nNext Task:')
+        scrolledTxt.delete(1.0, END)
+        scrolledTxt.insert(END, task)
         print(task)
-        comm = input('Enter a command ("help" for help): ')
+        print('Enter a command ("help" for help): ')
+        mutex.acquire()
+        # comm = input('Enter a command ("help" for help): ')
         splited = comm.split(' ')
         command = splited[0]
-        index = handleCommand(task, command, splited, tasks, index)
+        index = handleCommand(scrolledTxt.get(1.0, END), command, splited, tasks, index)
+    os._exit(0)
         
+def commandFromGui(command):
+    global comm
+    comm = command
+    mutex.release()
 
 def main():
     global unit
     unitFile = sys.argv[1]
     unit = unitFile[:-4]
     readJson('sepran-urmi.json')
+
+    Button(root, text="Exit", command=on_closing).grid(row=0, column=0)
+    Button(root, text="Load state", command=popupwin).grid(row=1, column=0)
+    Button(root, text="Next", command=lambda:commandFromGui('next')).grid(row=0, column=8)
+    Button(root, text="Previous", command=lambda:messagebox.showerror("Error", "Wrong Command")).grid(row=1, column=8)
+    Button(root, text="Reparse", command=lambda:commandFromGui('vim')).grid(row=2, column=8)
+
+    Button(root, text="Bullet", command=lambda:commandFromGui('bullet')).grid(row=5, column=1)
+    Button(root, text="Title", command=lambda:commandFromGui('title')).grid(row=5, column=2)
+    Button(root, text="Exercise title", command=lambda:commandFromGui('exertitle')).grid(row=5, column=3)
+    headerEnt= Entry(root)
+    headerEnt.grid(row=4, column=4)
+    Button(root, text="Header", command=lambda:commandFromGui('header ' + headerEnt.get(1.0, END))).grid(row=5, column=4)
+    gridEnt= Entry(root)
+    gridEnt.grid(row=4, column=5)
+    Button(root, text="Grid", command=lambda:commandFromGui('grid ' + gridEnt.get(1.0, END))).grid(row=5, column=5)
+    Button(root, text="SaveTable", command=lambda:commandFromGui('savetable')).grid(row=5, column=6)
+    saveexerEnt= Entry(root)
+    saveexerEnt.grid(row=4, column=7)
+    Button(root, text="SaveExercise", command=lambda:commandFromGui('saveexer ' + saveexerEnt.get(1.0, END))).grid(row=5, column=7)
+
     with pdfplumber.open(unitFile) as pdf:
         processed = ''
         for page in pdf.pages:
@@ -186,7 +250,12 @@ def main():
         splited = splitTextByRegex(processed, splitTextRegex)
         merged = mergeTitles(splited)
         merged.append('The End 🔥')
-        interaction(merged)  
+        Thread(target=interaction, args=(merged,)).start()
+        # interaction(merged) 
+        #  
+
+    popupwin()
+    root.mainloop() 
    
 if __name__ == '__main__':
     main()

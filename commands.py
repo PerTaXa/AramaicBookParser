@@ -73,12 +73,13 @@ def printHelp(*_):
     return CommandReturn.help, {}
 
 def openNano(text):
-    tempFile = 'temp.txt'
-    with open(tempFile, 'w+') as file:
-        file.write(text)
-        file.close()
-        subprocess.call(['vim', tempFile])
-        return CommandReturn.nano, {}
+    # tempFile = 'temp.txt'
+    # with open(tempFile, 'w+') as file:
+    #     file.write(text)
+    #     file.close()
+    #     subprocess.call(['vim', tempFile])
+    #     return CommandReturn.nano, {}
+    return CommandReturn.nano, {}
 
 def swapIfNeeded(arr, elemLines):
     if elemLines == 3:
