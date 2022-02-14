@@ -12,7 +12,7 @@ class General:
 @dataclass
 class Request(General):
     inUnitIndex : int
-    unit : str
+    ascUnitName : str
     type: str
     data : dict
 
@@ -32,7 +32,12 @@ class Table(General):
         self.hasSections = []
 
 @dataclass
+class TableWrapper(General):
+    table: Table
+
+@dataclass
 class Exercise(General):
+    exerciseNumber: int
     title: str
     table : Table
 

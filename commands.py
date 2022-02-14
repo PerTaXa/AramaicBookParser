@@ -5,7 +5,7 @@ from data_classes import *
 from utils import *
 
 commonDelimiter = 'ჭ'
-exercise = Exercise('', Table([],[],[]))
+exercise = Exercise(0,'', Table([],[],[]))
 table = Table([],[],[])
 # tableHeaders = {
 #     3row3col - 494
@@ -47,8 +47,8 @@ class CommandReturn(Enum):
     matchPictures = 4
     addVowelPoints = 5
 
-    translate_standart_engAssyr = 6
-    translate_standart_assyrEng = 7
+    translate_standard_engAram = 6
+    translate_standard_aramEng = 7
     translate_p33 = 8
 
     checkFromTwo = 9
@@ -64,6 +64,7 @@ class CommandReturn(Enum):
     table = 18
     exerciseTitle = 19
     help = 20
+    prev = 21
 
 def printHelp(*_):
     print('Commands:')
@@ -106,7 +107,7 @@ def parseRows(text, columns, direction, elemLines):
     lines = filterBy(lambda elem : len(elem), text.split('\n'))
     splited = [line.split(commonDelimiter) for line in lines]
     evenSplited = [splitArrNParts(spl, columns) for spl in splited]
-    evenSplited = removeU200E(evenSplited)
+    # evenSplited = removeU200E(evenSplited)
     elemMatched = mergeNrows(evenSplited, elemLines)
     directing = topDownReArrange(elemMatched)
     directed = flipDiagonally(directing) if direction else directing
@@ -124,7 +125,7 @@ def elemToObj(arr, type):
     elif type == 4:
         obj = ImageElement(arr[0], '')
     elif type == 5:
-        obj = CheckAram(arr[1], [arr[0], arr[1]])
+        obj = CheckAram(arr[1], [arr[0], arr[2]])
     return obj
     
 def convertToDataclasses(grid, type):
@@ -223,6 +224,7 @@ def beatifyText(text):
     text = re.sub(' \n', ' ', text)
     text = re.sub('\n ', ' ', text)
     text = re.sub('\n', ' ', text)
+    # text = re.sub('\u072C\u0735\u0710.','\u072C\u0735\u0710 .', text)
     text = re.sub(commonDelimiter, '', text)
     return text
 
@@ -236,7 +238,10 @@ def titleParse(text):
 
 def exerciseParse(text):
     text = beatifyText(text)
-    exercise.title = text
+    ind = text.index(')')
+    num = int(text[:ind])
+    exercise.exerciseNumber = num
+    exercise.title = text[ind+1:]
     return CommandReturn.exerciseTitle, Text(text)
 
 def saveExercise(*args):
@@ -246,17 +251,21 @@ def saveExercise(*args):
     return CommandReturn(type), data
 
 def saveTable(*_):
-    data = table.copy()
+    data = TableWrapper(table.copy())
     table.clear()
     return CommandReturn.table, data
 
 def next(*_):
     return CommandReturn.empty, {}
 
+def prev(*_):
+    return CommandReturn.prev, {}
+
 commands = {
     'help' : printHelp,
     'vim' : openNano,
     'next' : next,
+    'prev' : prev,
     'header' : headerParse,
     'grid' : gridParse,
     'bullet' : bulletParse,

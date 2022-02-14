@@ -1,5 +1,5 @@
+from string import punctuation
 import sys
-from numpy import empty
 import pdfplumber
 import json
 from functools import cmp_to_key
@@ -7,6 +7,7 @@ from commands import *
 from utils import *
 import requests
 import dataclasses
+import numpy as np
 
 sepranUrmiDict = {}
 simonSpecialChar = 'ܔ'
@@ -51,26 +52,60 @@ def processChars(chars):
 def convertToAramaic(line):
     seprInd = -1
     inserts = []
+    prevWord = ''
     for i in range(len(line)):
+        # if line[i]['text'] == '"':
+        #     print(line[i]['fontname'])
+        if line[i]['text'] in '.?:,[]+-"' and prevWord and line[i]['fontname'][7:]:
+            tempInd = i + 1
+            seps = 0
+            totChars = 2
+            while tempInd < len(line) and totChars:
+                if line[tempInd]['text'] == ' ' or not line[tempInd]['text'] or line[tempInd]['text'] in punctuation: 
+                    tempInd += 1
+                    continue
+                if line[tempInd]['fontname'][7:] == 'Sepran': seps += 1
+                totChars -= 1
+                tempInd += 1
+
+            if prevWord[7:] == 'Sepran' and seps > 0:
+                line[i]['fontname'] = 'HCFQDX+Sepran'
+                if line[i]['text'] == ',':
+                    line[i]['text'] = '#'
+                elif line[i]['text'] == '+':
+                    line[i]['text'] = '\u0e2e'
+                elif line[i]['text'] == '-':
+                    line[i]['text'] = '\u0e2d'
+
+            else:
+                line[i]['fontname'] = 'HCFQDX+Century'
+
+            prevWord = ''
+
         if line[i]['fontname'][7:] == 'Sepran':
             # if not line[i]['text'] in sepranUrmiDict: print(line[i]['text'])
             if not(i and line[i - 1]['fontname'][7:] != 'Sepran' and line[i]['text'] in '()'):
                 line[i]['text'] = sepranUrmiDict[line[i]['text']] if line[i]['text'] in sepranUrmiDict else 'ყ' + line[i]['text'] + 'ყ'
             seprInd = i if seprInd == -1 else seprInd
         else:
-            if line[i]['text'] in '-+': #-+.
-                # line[i]['text'] = '⠀-⠀'
-                line[i]['text'] = '‎' + line[i]['text']
+            # if line[i]['text'] in '-+': #-+.
+            #     # line[i]['text'] = '⠀-⠀'
+            #     line[i]['text'] = '‎' + line[i]['text']
                 
             if i and line[i - 1]['fontname'][7:] == 'Sepran':
                 index = i
                 if line[i - 1]['text'] == ' ': index -= 1
+                if line[seprInd]['text'] == ' ': seprInd += 1
 
                 if isAramLetter(''.join([ch['text'] for ch in line[seprInd: index]])):
                     inserts.append(index)
                     
                 line[seprInd: index] = line[seprInd: index][::-1]
                 seprInd = -1
+        
+        if line[i]['text'] != ' ' and not line[i]['text'] in punctuation:
+            prevWord = line[i]['fontname']
+
     if seprInd != -1: 
         if isAramLetter(''.join([ch['text'] for ch in line[seprInd:]])):
             line.insert(seprInd, simonSpecial)
@@ -88,7 +123,11 @@ def processLine(line):
         line.insert(0, {'text': '<title>', 'fontname': 'HCFQDX+Century'})
 
     line = changeFont(line, '?', '^', 'HCFQDX+Sepran')
-    line = changeFont(line, ',', '#', 'HCFQDX+Sepran')
+    # line = changeFont(line, ',', '#', 'HCFQDX+Sepran')
+    line = changeFont(line, ' ', ' ', 'HCFQDX+Sepran')
+    # line = changeFont(line, '+', '\u0e2e', 'HCFQDX+Sepran')
+    # line = changeFont(line, '-', '\u0e2d', 'HCFQDX+Sepran')
+    # line = changeFont(line, ".", '@', 'HCFQDX+Sepran')
     # line = changeFont(line, '.', '@', 'HCFQDX+Sepran')
     aramaic = convertToAramaic(line)
 
@@ -138,8 +177,8 @@ def handleCommand(task, command, splited, tasks, index):
                 tasks[index] = f.read()
                 splitIfTag(tasks, index)
         elif returned not in [CommandReturn.help, CommandReturn.header, CommandReturn.grid, 
-                                CommandReturn.exerciseTitle, CommandReturn.empty]:
-            query = Request(inUnitIndex=index, unit=unit, type=returned.name, data={})
+                                CommandReturn.exerciseTitle, CommandReturn.empty, CommandReturn.prev]:
+            query = Request(inUnitIndex=index, ascUnitName=unit, type=returned.name, data={})
             # if returned not in [CommandReturn.TITLE, CommandReturn.BULLET, CommandReturn.TABLE]:
             decision = sendDecision(data)
             if not decision : return index
@@ -147,46 +186,74 @@ def handleCommand(task, command, splited, tasks, index):
             if not isinstance(data, dict) : data = dataclasses.asdict(data)
             query.data = data
             print(requests.post(apiUrl, json=dataclasses.asdict(query)).text)
-        elif returned not in [CommandReturn.empty]:
+        elif returned not in [CommandReturn.empty, CommandReturn.prev]:
             decision = sendDecision(data)
             if not decision : return index
             elif decision == 1 : return index + 1
         
         if returned in [CommandReturn.empty, CommandReturn.grid, CommandReturn.header, 
                         CommandReturn.exerciseTitle, CommandReturn.bullet, CommandReturn.title] : index += 1
+        if returned in [CommandReturn.prev]: index -= 1
     except Exception as _:
         print('---  Wrong command!!!  ---')
     
     return index
 
-def interaction(tasks):
-    index = 0
-    while index < len(tasks):
-        task = tasks[index]
-        print('\nNext Task:')
-        print(task)
-        comm = input('Enter a command ("help" for help): ')
-        splited = comm.split(' ')
-        command = splited[0]
-        index = handleCommand(task, command, splited, tasks, index)
-        
+def interaction(tasks, index = 0):
+    try:
+        while index < len(tasks):
+            task = tasks[index]
+            print('\nNext Task:')
+            print(task)
+            comm = input('Enter a command ("help" for help): ')
+            splited = comm.split(' ')
+            command = splited[0]
+            index = handleCommand(task, command, splited, tasks, index)
+    except KeyboardInterrupt as _:
+        save = input("\nSave state? ")
+        if save != '0':
+            with open("{}.json".format(unit), "w") as f:
+                # jsonstr = json.dumps(tasks)
+                stateData = {
+                    'index': index,
+                    'data':tasks
+                }
+                json.dump(stateData, f)
+        exit(0)
 
 def main():
     global unit
     unitFile = sys.argv[1]
     unit = unitFile[:-4]
     readJson('sepran-urmi.json')
-    with pdfplumber.open(unitFile) as pdf:
-        processed = ''
-        for page in pdf.pages:
-            _, chars = extractData(page)
-            newChars = processChars(chars)
-            processed += processData(newChars)
-        # print(processed)
-        splited = splitTextByRegex(processed, splitTextRegex)
-        merged = mergeTitles(splited)
-        merged.append('The End 🔥')
-        interaction(merged)  
+    load = input('Load previous state? ')
+    if load == '0':
+        with pdfplumber.open(unitFile) as pdf:
+            processed = ''
+            for page in pdf.pages:
+                _, chars = extractData(page)
+                newChars = processChars(chars)
+                processed += processData(newChars)
+            # print(processed)
+            splited = splitTextByRegex(processed, splitTextRegex)
+            merged = mergeTitles(splited)
+            merged.append('The End 🔥')
+            interaction(merged) 
+    else:
+        ind = 0
+        try:
+            splited = load.split(' ')
+            ind = int(splited[1])
+        except:
+            pass
+        with open("{}.json".format(unit), "r") as f:
+                # jsonstr = json.dumps(tasks)
+                stateData = json.load(f)
+                prevInd = stateData['index']
+                arr = stateData['data']
+                finalInd = prevInd if ind == -1 else ind
+                interaction(arr, finalInd)
+                # json.dump(tasks, f)
    
 if __name__ == '__main__':
     main()
