@@ -16,28 +16,9 @@ table = Table([],[],[])
 #     3row2col - 287
 #     2row2col-272,185
 # }
-
-# Pattern
-# 1 -       example
-#           ex   ex
-# 2 -  example    example
-#      ex   ex
-# 3 -  example    example    example
-#                 ex   ex
-# 4 -       example
-#         ex  ex  ex
-# 5 -  example    example
-#         ex
-#         ex
-# 6 -  example    example
-#         ex
-#      ex   ex
-# 7 -  example    example
-#     ex     ex
-#          ex   ex
-# 8 - example     example    example    example   example
-#                 ex   ex
-         
+exerciseTypes = ['listen_simple', 'newVocab_standard', 'newVocab_mixedImages', 'newVocab_allImages', 'matchPictures', 
+'addVowelPoints','translate_standard_engAram','translate_standard_aramEng','translate_p33','checkFromTwo','addMissingLetter', 'writeWordFromPic_checkFromTwo', 'writeWordFromPic_count']
+        
 class CommandReturn(Enum):
     listen_simple = 0
     newVocab_standard = 1
@@ -54,17 +35,18 @@ class CommandReturn(Enum):
     checkFromTwo = 9
     addMissingLetter = 10
     writeWordFromPic_checkFromTwo = 11
+    writeWordFromPic_count = 12
 
-    nano = 12
-    empty = 13
-    title = 14
-    header = 15
-    grid = 16
-    bullet = 17
-    table = 18
-    exerciseTitle = 19
-    help = 20
-    prev = 21
+    nano = 13
+    empty = 14
+    title = 15
+    header = 16
+    grid = 17
+    bullet = 18
+    table = 19
+    exerciseTitle = 20
+    help = 21
+    prev = 22
 
 def printHelp(*_):
     print('Commands:')
@@ -80,6 +62,7 @@ def openNano(text):
         file.close()
         subprocess.call(['vim', tempFile])
         return CommandReturn.nano, {}
+    # return CommandReturn.nano, {}
 
 def swapIfNeeded(arr, elemLines):
     if elemLines == 3:
@@ -114,36 +97,35 @@ def parseRows(text, columns, direction, elemLines):
     # result = swapIfNeeded(directed, elemLines)
     return directed
 
-def elemToObj(arr, type):
-    obj = 0
-    if type == 1:
-        obj = AramElement(arr[0])
-    elif type == 2:
-        obj = EngElement(arr[0])
-    elif type == 3:
-        obj = BothElements(words=arr)
-    elif type == 4:
-        obj = ImageElement(arr[0], '')
-    elif type == 5:
-        obj = CheckAram(arr[1], [arr[0], arr[2]])
-    return obj
+# def elemToObj(arr, type):
+#     obj = 0
+#     if type == 1:
+#         obj = AramElement(arr[0])
+#     elif type == 2:
+#         obj = EngElement(arr[0])
+#     elif type == 3:
+#         obj = BothElements(words=arr)
+#     elif type == 4:
+#         obj = ImageElement(arr[0], '')
+#     elif type == 5:
+#         obj = CheckAram(arr[1], [arr[0], arr[2]])
+#     return obj
     
-def convertToDataclasses(grid, type):
+def convertToDataclasses(grid):
     result = copy.deepcopy(grid)
     for ind1, column in enumerate(grid):
         for ind2, elem in enumerate(column):
-            result[ind1][ind2] = elemToObj(elem, type)
+            result[ind1][ind2] = BothElements(words=elem)
     return result
 
 
 def gridParse(text, *args):
     columns = int(args[0])
-    elemType = int(args[1])
-    direction = int(args[2])
-    elemLines = int(args[3])
-    hasSections = int(args[4]) != 0
+    direction = int(args[1])
+    elemLines = int(args[2])
+    hasSections = int(args[3]) != 0
     result = parseRows(text, columns, direction, elemLines)
-    result = convertToDataclasses(result, elemType)
+    result = convertToDataclasses(result)
 
     exercise.table.grids.append(result) if exercise.isExercise() else table.grids.append(result)
     exercise.table.hasSections.append(hasSections) if exercise.isExercise() else table.hasSections.append(hasSections)
@@ -151,6 +133,26 @@ def gridParse(text, *args):
 
 def handleHeaderPattern(text, pattern):
     lines = text.split('\n')
+    # Pattern
+    # 1 -       example
+    #           ex   ex
+    # 2 -  example    example
+    #      ex   ex
+    # 3 -  example    example    example
+    #                 ex   ex
+    # 4 -       example
+    #         ex  ex  ex
+    # 5 -  example    example
+    #         ex
+    #         ex
+    # 6 -  example    example
+    #         ex
+    #      ex   ex
+    # 7 -  example    example
+    #     ex     ex
+    #          ex   ex
+    # 8 - example     example    example    example   example
+    #                 ex   ex
     if pattern == 1:
         return {
             lines[0] : lines[1].split(commonDelimiter)

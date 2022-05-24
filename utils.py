@@ -5,7 +5,7 @@ import copy
 yTolerance = 5
 
 def isAramLetter(string):
-    return [ch.isalpha() for ch in string].count(True) == 1
+    return [ch.isalpha() and ch.lower() not in 'abcdefghijklmnopqrstuvwxyz' for ch in string].count(True) == 1
 
 def charY(char):
     return (char['bottom'] + char['top']) / 2

@@ -1,7 +1,11 @@
 from enum import Enum
 
-ab = ':A⁄oøx h4r3m7a'
-print('\u0308')
-# for a in ab:
-#     print(ord(a))
-    # print(ord(u"{a}"))
+import re
+
+txt = '(r. ܲܪܸܨ)'
+x = re.findall("\(r\...[^\s\(\)(a-z)]+", txt)
+print(x)
+
+# txt = '(r.      (ܬܵܒܹܪܬܲܓܒܘܼܪܹܐ (v.)'
+# x = re.sub('\s{2,}', ' ', txt)
+# print(x)
